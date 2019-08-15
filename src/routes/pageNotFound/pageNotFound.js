@@ -1,0 +1,9 @@
+const pageNotFound = (request, response) => {
+  response.writeHead(404, {
+    "Content-Type": "text/html"
+  });
+  response.write("<h1>Page not found</h1>");
+  response.end();
+};
+
+module.exports = pageNotFound;
