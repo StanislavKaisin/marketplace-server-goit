@@ -1,9 +1,16 @@
 const pageNotFound = (request, response) => {
-  response.writeHead(404, {
-    "Content-Type": "text/html"
-  });
-  response.write("<h1>Page not found</h1>");
-  response.end();
+  response.removeHeader('Transfer-Encoding');
+  response.removeHeader('X-Powered-By');
+  response
+    .status(404)
+    .format({
+      'html': function () {
+        response.send(
+          "<h1>Page not found</h1>"
+        )
+      },
+    })
+    .end();
 };
 
 module.exports = pageNotFound;

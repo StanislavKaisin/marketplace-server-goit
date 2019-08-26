@@ -1,19 +1,40 @@
 const fs = require("fs");
 const path = require("path");
+const shortid = require('shortid');
 
-const takeIdFromRoute = require("./takeIdFromRoute");
-const takeProductsToResponseWithId = require("./takeProductsToResponseWithId");
 
-const searchProductsForIds = (request, response) => {
+const saveUser = (request, response) => {
+  let users;
   try {
     const filePath = path.join(
       __dirname,
-      "../../../",
+      "../../",
       "db",
-      "products",
-      "all-products.json"
+      "users",
+      "all-users.json"
     );
-    let products = fs.readFileSync(filePath, "utf8", (error, data) => {
+    users = fs.readFileSync(filePath, "utf8", (error, data) => {
+      if (error) {
+        response.removeHeader('Transfer-Encoding');
+        response.removeHeader('X-Powered-By');
+        response.writeHead(500, {
+          "Content-Type": "application/json"
+        });
+        response.write(JSON.stringify(error));
+        response.end();
+      }
+      return data;
+    });
+
+    const userId = shortid.generate();
+    user = {
+      id: userId,
+      ...request.body
+    }
+    users = JSON.parse(users);
+    users = [...users, user];
+
+    fs.writeFile(filePath, JSON.stringify(users), (error) => {
       if (error) {
         response.removeHeader('Transfer-Encoding');
         response.removeHeader('X-Powered-By');
@@ -25,37 +46,26 @@ const searchProductsForIds = (request, response) => {
             },
           })
           .end();
+        return;
       }
-      return data;
     });
-    products = JSON.parse(products);
-
-    const idForSearch = takeIdFromRoute(request);
-
-    let productsToResponse = [];
-    productsToResponse = takeProductsToResponseWithId(idForSearch, products);
 
     const resultBody = {};
-    if (productsToResponse.length) {
-      status = 'success'
-    } else {
-      status = 'no products'
-    };
-    resultBody.status = status;
-    resultBody.products = productsToResponse;
+    resultBody.status = 'success';
+    resultBody.user = user;
 
     response.removeHeader('Transfer-Encoding');
     response.removeHeader('X-Powered-By');
     response
-      .status(200)
+      .status(201)
       .format({
         'application/json': function () {
           response.send(resultBody)
         },
       })
-      .end()
+      .end();
 
-  } catch (error) {
+  } catch (err) {
     response.removeHeader('Transfer-Encoding');
     response.removeHeader('X-Powered-By');
     response
@@ -67,6 +77,7 @@ const searchProductsForIds = (request, response) => {
       })
       .end();
   }
-};
 
-module.exports = searchProductsForIds;
+}
+
+module.exports = saveUser;

@@ -15,11 +15,16 @@ const searchProductsForIds = (request, response) => {
     );
     let products = fs.readFileSync(filePath, "utf8", (error, data) => {
       if (error) {
-        response.writeHead(500, {
-          "Content-Type": "application/json"
-        });
-        response.write(JSON.stringify(error));
-        response.end();
+        response.removeHeader('Transfer-Encoding');
+        response.removeHeader('X-Powered-By');
+        response
+          .status(500)
+          .format({
+            'application/json': function () {
+              response.send(JSON.stringify(error))
+            },
+          })
+          .end();
       }
       return data;
     });
@@ -28,27 +33,40 @@ const searchProductsForIds = (request, response) => {
     const category = takeCategoryFromQuery(request);
 
     let productsToResponse = [];
-    productsToResponse = takeProductsToResponseWithCategory(category, products);
+    productsToResponse = takeProductsToResponseWithCategory(category, products) || [];
 
-    response.writeHead(200, {
-      "Content-Type": "application/json"
-    });
     const resultBody = {};
+    let status = "no products";
     if (productsToResponse.length) {
       status = "success";
     } else {
       status = "no products";
-    }
+    };
     resultBody.status = status;
     resultBody.products = productsToResponse;
-    response.write(JSON.stringify(resultBody));
-    response.end();
+
+    response.removeHeader('Transfer-Encoding');
+    response.removeHeader('X-Powered-By');
+    response
+      .status(200)
+      .format({
+        'application/json': function () {
+          response.send(resultBody)
+        },
+      })
+      .end();
+
   } catch (error) {
-    response.writeHead(500, {
-      "Content-Type": "application/json"
-    });
-    response.write(JSON.stringify(error));
-    response.end();
+    response.removeHeader('Transfer-Encoding');
+    response.removeHeader('X-Powered-By');
+    response
+      .status(500)
+      .format({
+        'application/json': function () {
+          response.send(JSON.stringify(error))
+        },
+      })
+      .end();
   }
 };
 

@@ -1,10 +1,34 @@
-// const http = require("http");
+const http = require("http");
 const https = require("https");
+const express = require("express")
 const router = require("./routes/router");
 const url = require("url");
 const fs = require("fs");
 const path = require("path");
 
+const app = express();
+
+app.use('/', router);
+
+/*
+
+app.get('/products', (request, response) => {
+  console.log('products=');
+  response.send('products');
+})
+
+app.get('/products/:id', (request, response) => {
+  console.log('id=', id);
+  response.send(id);
+})
+
+app.get('/', (request, response) => {
+  console.log('/=');
+  // console.log('response=', response);
+  response.send('Hello World!');
+})
+*/
+/*
 const requestHandler = (request, response) => {
   const parsedUrl = url.parse(request.url);
 
@@ -45,23 +69,25 @@ const requestHandler = (request, response) => {
 
   func(request, response);
 };
+*/
 
-const httpsServerOptions = {
-  key: fs.readFileSync(
-    path.join(__dirname, "/config/https/key-20190813-225534.pem")
-  ),
-  cert: fs.readFileSync(
-    path.join(__dirname, "/config/https/cert-20190813-225534.crt")
-  )
-};
-const httpsServer = https.createServer(httpsServerOptions, requestHandler);
+// const httpsServerOptions = {
+//   key: fs.readFileSync(
+//     path.join(__dirname, "/config/https/key-20190813-225534.pem")
+//   ),
+//   cert: fs.readFileSync(
+//     path.join(__dirname, "/config/https/cert-20190813-225534.crt")
+//   )
+// };
+// const httpsServer = https.createServer(httpsServerOptions, requestHandler);
 
 const startServer = port => {
-  httpsServer.listen(port, error => {
+  app.listen(port, error => {
     if (error) {
       console.log(`Error at: ${error}`);
     }
     console.log(`Server running at ${port} port`);
   });
 };
+// module.exports = startServer;
 module.exports = startServer;

@@ -1,19 +1,17 @@
 const fs = require("fs");
 const path = require("path");
 
-const takeIdFromRoute = require("./takeIdFromRoute");
-const takeProductsToResponseWithId = require("./takeProductsToResponseWithId");
 
-const searchProductsForIds = (request, response) => {
+const getUserWithId = (request, response) => {
   try {
     const filePath = path.join(
       __dirname,
       "../../../",
       "db",
-      "products",
-      "all-products.json"
+      "users",
+      "all-users.json"
     );
-    let products = fs.readFileSync(filePath, "utf8", (error, data) => {
+    let users = fs.readFileSync(filePath, "utf8", (error, data) => {
       if (error) {
         response.removeHeader('Transfer-Encoding');
         response.removeHeader('X-Powered-By');
@@ -28,21 +26,18 @@ const searchProductsForIds = (request, response) => {
       }
       return data;
     });
-    products = JSON.parse(products);
-
-    const idForSearch = takeIdFromRoute(request);
-
-    let productsToResponse = [];
-    productsToResponse = takeProductsToResponseWithId(idForSearch, products);
+    users = JSON.parse(users);
+    const idForSearch = request.params.id;
+    const userToResponse = users.find(user => user.id === idForSearch);
 
     const resultBody = {};
-    if (productsToResponse.length) {
+    if (userToResponse) {
       status = 'success'
     } else {
-      status = 'no products'
+      status = 'not found'
     };
     resultBody.status = status;
-    resultBody.products = productsToResponse;
+    resultBody.user = userToResponse || {};
 
     response.removeHeader('Transfer-Encoding');
     response.removeHeader('X-Powered-By');
@@ -53,7 +48,7 @@ const searchProductsForIds = (request, response) => {
           response.send(resultBody)
         },
       })
-      .end()
+      .end();
 
   } catch (error) {
     response.removeHeader('Transfer-Encoding');
@@ -69,4 +64,4 @@ const searchProductsForIds = (request, response) => {
   }
 };
 
-module.exports = searchProductsForIds;
+module.exports = getUserWithId;

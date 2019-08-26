@@ -12,27 +12,41 @@ const productsRoute = (request, response) => {
     );
     const products = fs.readFileSync(filePath, "utf8", (error, data) => {
       if (error) {
-        response.writeHead(500, {
-          "Content-Type": "application/json"
-        });
-        response.write(JSON.stringify(error));
-        response.end();
+        response.removeHeader('Transfer-Encoding');
+        response.removeHeader('X-Powered-By');
+        response
+          .status(500)
+          .format({
+            'application/json': function () {
+              response.send(JSON.stringify(error))
+            },
+          })
+          .end();
       }
       return data;
     });
 
-    response.writeHead(200, {
-      "Content-Type": "application/json"
-    });
-    response.write(products);
-    response.end();
-
+    response.removeHeader('Transfer-Encoding');
+    response.removeHeader('X-Powered-By');
+    response
+      .status(200)
+      .format({
+        'application/json': function () {
+          response.send(products)
+        },
+      })
+      .end();
   } catch (error) {
-    response.writeHead(500, {
-      "Content-Type": "application/json"
-    });
-    response.write(JSON.stringify(error));
-    response.end();
+    response.removeHeader('Transfer-Encoding');
+    response.removeHeader('X-Powered-By');
+    response
+      .status(500)
+      .format({
+        'application/json': function () {
+          response.send(JSON.stringify(error))
+        },
+      })
+      .end();
   }
 };
 

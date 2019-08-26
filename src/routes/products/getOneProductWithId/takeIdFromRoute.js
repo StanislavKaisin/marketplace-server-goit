@@ -1,11 +1,5 @@
-const url = require("url");
-
-const takeIdsFromQuery = request => {
-  const parsedUrl = url.parse(request.url);
-
-  const idForSearchAsArray = parsedUrl.pathname
-    .slice(1, parsedUrl.pathname.length)
-    .split("/");
-  return idForSearchAsArray[1];
+const takeIdFromRoute = request => {
+  const idForSearch = request.params.id
+  return idForSearch;
 };
-module.exports = takeIdsFromQuery;
+module.exports = takeIdFromRoute;

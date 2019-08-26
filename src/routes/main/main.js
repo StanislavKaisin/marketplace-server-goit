@@ -1,9 +1,16 @@
 const mainRoute = (request, response) => {
-  response.writeHead(200, {
-    "Content-Type": "text/html"
-  });
-  response.write("<h1>Hello from server</h1>");
-  response.end();
+  response.removeHeader('Transfer-Encoding');
+  response.removeHeader('X-Powered-By');
+  response
+    .status(200)
+    .format({
+      'html': function () {
+        response.send(
+          "<h1>Hello from server</h1>"
+        )
+      },
+    })
+    .end();
 };
 
 module.exports = mainRoute;
