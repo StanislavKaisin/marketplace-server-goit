@@ -1,29 +1,32 @@
 const mongoose = require("mongoose");
 const {
   DBURL
-} = require("../../../config/config");
-const Product = require("../../../db/schemas/product");
+} = require("../../config/config");
+const User = require("../../db/schemas/user");
+const bcrypt = require('bcrypt');
 
-const takeCategoryFromQuery = require("./helpers/takeCategoryFromQuery");
+const updateUser = (request, response) => {
+  const updatedUserInfo = request.body;
+  const idForSearch = request.params.id;
+  if (updatedUserInfo.password) {
+    updatedUserInfo.password = bcrypt.hashSync(updatedUserInfo.password, 10);
+  }
 
-const searchProductsForIds = (request, response) => {
-  const category = takeCategoryFromQuery(request);
-
-  const sendResponse = products => {
-    let status = "no products";
-    if (products.length) {
-      status = "success";
-    } else {
-      status = "no products";
-    };
+  const sendResponse = user => {
+    let responseBody = {
+      status: "error",
+      text: 'no such user',
+      user
+    }
+    user ? responseBody = {
+      status: "success",
+      user
+    } : responseBody;
     response.removeHeader("Transfer-Encoding");
     response.removeHeader("X-Powered-By");
     response
       .status(200)
-      .json({
-        status: status,
-        products
-      })
+      .json(responseBody)
       .end();
   };
 
@@ -34,19 +37,24 @@ const searchProductsForIds = (request, response) => {
       .status(400)
       .json({
         status: 'error',
-        text: 'there is no such products',
+        text: 'there is no such user',
         error: error
       })
       .end();
   };
+
   mongoose
     .connect(DBURL, {
       useNewUrlParser: true
     })
     .then(() => {
-      Product.find({
-          categories: category
-        })
+      User.findOneAndUpdate({
+            _id: idForSearch
+          },
+          updatedUserInfo, {
+            new: true
+          }
+        )
         .then(sendResponse)
         .catch(sendError);
     })
@@ -63,7 +71,6 @@ const searchProductsForIds = (request, response) => {
         .end();
       console.error("Database connection error", error);
     });
-
 };
 
-module.exports = searchProductsForIds;
+module.exports = updateUser;

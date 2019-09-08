@@ -3,18 +3,20 @@ const {
   DBURL
 } = require('../../config/config');
 
-const Product = require('../../db/schemas/product');
+const Product = require("../../db/schemas/product");
 
-const productsRoute = (request, response) => {
+const createProduct = (request, response) => {
+  const productData = request.body;
+  const productToDb = new Product(productData);
 
-  const sendResponse = products => {
+  const sendResponse = product => {
     response.removeHeader('Transfer-Encoding');
     response.removeHeader('X-Powered-By');
     response
-      .status(200)
+      .status(201)
       .json({
         status: 'success',
-        products
+        product
       })
       .end();
   };
@@ -25,17 +27,18 @@ const productsRoute = (request, response) => {
     response
       .status(500)
       .json({
+        status: 'error',
         error: error
       })
       .end();
-  }
+  };
 
   mongoose.connect(DBURL, {
       useNewUrlParser: true
     })
     .then(() => {
-      Product
-        .find()
+      productToDb
+        .save()
         .then(sendResponse)
         .catch(sendError);
     })
@@ -54,4 +57,4 @@ const productsRoute = (request, response) => {
     })
 };
 
-module.exports = productsRoute;
+module.exports = createProduct;

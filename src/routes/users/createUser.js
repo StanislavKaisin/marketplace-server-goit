@@ -1,83 +1,66 @@
-const fs = require("fs");
-const path = require("path");
-const shortid = require('shortid');
+const mongoose = require('mongoose');
+const {
+  DBURL
+} = require('../../config/config');
 
+const User = require("../../db/schemas/user");
+const bcrypt = require("bcrypt");
 
 const saveUser = (request, response) => {
-  let users;
-  try {
-    const filePath = path.join(
-      __dirname,
-      "../../",
-      "db",
-      "users",
-      "all-users.json"
-    );
-    users = fs.readFileSync(filePath, "utf8", (error, data) => {
-      if (error) {
-        response.removeHeader('Transfer-Encoding');
-        response.removeHeader('X-Powered-By');
-        response.writeHead(500, {
-          "Content-Type": "application/json"
-        });
-        response.write(JSON.stringify(error));
-        response.end();
-      }
-      return data;
-    });
+  const user = request.body;
+  const hashedPassword = bcrypt.hashSync(user.password, 10);
+  const userData = {
+    ...user,
+    password: hashedPassword
+  };
+  const userToDb = new User(userData);
 
-    const userId = shortid.generate();
-    user = {
-      id: userId,
-      ...request.body
-    }
-    users = JSON.parse(users);
-    users = [...users, user];
-
-    fs.writeFile(filePath, JSON.stringify(users), (error) => {
-      if (error) {
-        response.removeHeader('Transfer-Encoding');
-        response.removeHeader('X-Powered-By');
-        response
-          .status(500)
-          .format({
-            'application/json': function () {
-              response.send(JSON.stringify(error))
-            },
-          })
-          .end();
-        return;
-      }
-    });
-
-    const resultBody = {};
-    resultBody.status = 'success';
-    resultBody.user = user;
-
+  const sendResponse = user => {
     response.removeHeader('Transfer-Encoding');
     response.removeHeader('X-Powered-By');
     response
       .status(201)
-      .format({
-        'application/json': function () {
-          response.send(resultBody)
-        },
+      .json({
+        status: 'success',
+        user
       })
       .end();
+  };
 
-  } catch (err) {
+  const sendError = (error) => {
     response.removeHeader('Transfer-Encoding');
     response.removeHeader('X-Powered-By');
     response
       .status(500)
-      .format({
-        'application/json': function () {
-          response.send(JSON.stringify(error))
-        },
+      .json({
+        status: 'error',
+        error: error
       })
       .end();
   }
 
-}
+  mongoose.connect(DBURL, {
+      useNewUrlParser: true
+    })
+    .then(() => {
+      userToDb
+        .save()
+        .then(sendResponse)
+        .catch(sendError);
+    })
+    .catch((error) => {
+      response.removeHeader('Transfer-Encoding');
+      response.removeHeader('X-Powered-By');
+      response
+        .status(500)
+        .json({
+          status: 'error',
+          text: 'Database connection error',
+          error: error
+        })
+        .end();
+      console.error('Database connection error', error)
+    })
+};
 
 module.exports = saveUser;

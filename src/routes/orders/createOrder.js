@@ -1,186 +1,81 @@
-const fs = require("fs");
-const path = require("path");
-const uuidv4 = require("uuid/v4");
+const mongoose = require('mongoose');
+const {
+  DBURL
+} = require('../../config/config');
 
-const operationTypes = require("./operationTypes");
-
-const ifFolderExists = require("./helpers/ifFolderExists");
-const createFolder = require("./helpers/createFolder");
-const takeProductsFromDb = require("./helpers/takeProductsFromDb");
-const writeOrder = require("./helpers/writeOrder");
-
-const takeProductsWithIds = require("../products/helpers/takeProductsToResponse");
+const Order = require("../../db/schemas/order");
+const User = require("../../db/schemas/user");
 
 const createOrder = (request, response) => {
-  const userId = request.body.user;
-  const productsIds = request.body.products;
-  const userFolderName = `${userId}-user`;
-  const folderPath = path.join(
-    __dirname,
-    "../../",
-    "db",
-    "users",
-    userFolderName
-  );
-  let {
-    actionFolder,
-    payloadFolder
-  } = ifFolderExists(folderPath);
-  if (actionFolder === operationTypes.ERROR) {
-    response.removeHeader("Transfer-Encoding");
-    response.removeHeader("X-Powered-By");
-    response
-      .status(500)
-      .format({
-        "application/json": function () {
-          response.send(JSON.stringify(payloadFolder));
-        }
-      })
-      .end();
-    return;
-  }
-  let pathToUserFolder;
-  if (actionFolder === operationTypes.SUCCESS) {
-    pathToUserFolder = payloadFolder;
-  }
-  if (actionFolder === operationTypes.FOLDER_IS_NOT_EXISTS) {
-    let {
-      actionCreateFolder,
-      payloadCreateFolder
-    } = createFolder(
-      payloadFolder
-    );
-    if (actionCreateFolder === operationTypes.ERROR) {
-      response.removeHeader("Transfer-Encoding");
-      response.removeHeader("X-Powered-By");
-      response
-        .status(500)
-        .format({
-          "application/json": function () {
-            response.send(JSON.stringify(payloadFolder));
-          }
-        })
-        .end();
-      return;
-    }
-    pathToUserFolder = payloadCreateFolder;
-  }
-  let pathToUserOrders = path.join(pathToUserFolder, "/orders");
-  let checkOrderFolder = ifFolderExists(pathToUserOrders);
-  if (checkOrderFolder.actionFolder === operationTypes.ERROR) {
-    response.removeHeader("Transfer-Encoding");
-    response.removeHeader("X-Powered-By");
-    response
-      .status(500)
-      .format({
-        "application/json": function () {
-          response.send(JSON.stringify(payloadFolder));
-        }
-      })
-      .end();
-    return;
-  }
-  if (checkOrderFolder.actionFolder === operationTypes.SUCCESS) {
-    pathToUserOrders = checkOrderFolder.payloadFolder;
-  }
-  if (checkOrderFolder.actionFolder === operationTypes.FOLDER_IS_NOT_EXISTS) {
-    let createOrderFolder = createFolder(pathToUserOrders);
-    if (createOrderFolder.actionCreateFolder === operationTypes.ERROR) {
-      response.removeHeader("Transfer-Encoding");
-      response.removeHeader("X-Powered-By");
-      response
-        .status(500)
-        .format({
-          "application/json": function () {
-            response.send(JSON.stringify(createOrderFolder.payloadFolder));
-          }
-        })
-        .end();
-      return;
-    }
-    pathToUserOrders = createOrderFolder.payloadCreateFolder;
-  }
-  let productsToResponse = [];
-  let productsFromDb = takeProductsFromDb();
-  if (productsFromDb.action === operationTypes.ERROR) {
-    response.removeHeader("Transfer-Encoding");
-    response.removeHeader("X-Powered-By");
-    response
-      .status(500)
-      .format({
-        "application/json": function () {
-          response.send(JSON.stringify(productsFromDb.payload));
-        }
-      })
-      .end();
-    return;
-  }
-  productsToResponse = takeProductsWithIds(productsIds, productsFromDb.payload);
-  const productsIdsToResponse = productsToResponse.reduce((acc, product) => {
-    acc.push(product.id);
-    return acc;
-  }, [])
-  const resultBody = {};
-  let status = null;
-  let order = null;
-  const orderId = uuidv4();
-  if (productsToResponse.length) {
-    status = 'success';
-    order = {
-      id: orderId,
-      ...request.body,
-      products: productsIdsToResponse,
-    }
-  } else {
-    status = 'failed';
-    resultBody.status = status;
-    resultBody.order = order;
-    JSON.stringify(resultBody);
+  const orderData = request.body;
+  const orderToDb = new Order(orderData);
+  debugger;
+  const sendResponse = order => {
     response.removeHeader('Transfer-Encoding');
     response.removeHeader('X-Powered-By');
     response
-      .status(205)
-      .format({
-        'application/json': function () {
-          response.send(JSON.stringify(resultBody))
-        },
+      .status(201)
+      .json({
+        status: 'success',
+        order
       })
       .end();
-    return;
+    addOrderToUser(order);
   };
-  resultBody.status = status;
-  resultBody.order = order;
-  const orderFileName = `${orderId}-order.json`
-  const pathToSaveOrder = path.join(pathToUserOrders, orderFileName);
-  let writeOrderResult = writeOrder(pathToSaveOrder, resultBody);
-  writeOrderResult.then(
-      (data) => {
-        response.removeHeader('Transfer-Encoding');
-        response.removeHeader('X-Powered-By');
-        response
-          .status(201)
-          .format({
-            'application/json': function () {
-              response.send(JSON.stringify(data.payload))
-            },
-          })
-          .end();
-        return;
-      }
 
-    )
+  const sendError = (error) => {
+    response.removeHeader('Transfer-Encoding');
+    response.removeHeader('X-Powered-By');
+    response
+      .status(500)
+      .json({
+        status: 'error',
+        error: error
+      })
+      .end();
+  };
+
+  const addOrderToUser = (order) => {
+    const userId = orderData.creator;
+    const orderId = order.id;
+
+    User.findOneAndUpdate({
+        _id: userId
+      }, {
+        $addToSet: {
+          orders: orderId
+        }
+      }, {
+        useFindAndModify: false
+      }, (error) => {
+        if (error) console.log(error);
+      })
+      .then(console.log(`updated user with id ${userId}`))
+  }
+
+
+  mongoose.connect(DBURL, {
+      useNewUrlParser: true
+    })
+    .then(() => {
+      orderToDb
+        .save()
+        .then(sendResponse)
+        .catch(sendError);
+    })
     .catch((error) => {
       response.removeHeader('Transfer-Encoding');
       response.removeHeader('X-Powered-By');
       response
         .status(500)
-        .format({
-          'application/json': function () {
-            response.send(JSON.stringify(error))
-          },
+        .json({
+          status: 'error',
+          text: 'Database connection error',
+          error: error
         })
         .end();
-    });
+      console.error('Database connection error', error)
+    })
 };
 
 module.exports = createOrder;

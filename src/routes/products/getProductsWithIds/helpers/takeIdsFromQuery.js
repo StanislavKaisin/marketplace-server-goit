@@ -3,6 +3,7 @@ const takeIdsFromQuery = request => {
   const idsForSearchAsArray = idsForSearch
     .slice(1, idsForSearch.length - 1)
     .split(",");
-  return idsForSearchAsArray;
+  const onlyNumberIds = idsForSearchAsArray.filter((elem) => !Number.isNaN(Number(elem)));
+  return onlyNumberIds;
 };
 module.exports = takeIdsFromQuery;

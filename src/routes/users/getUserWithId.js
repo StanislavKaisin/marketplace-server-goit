@@ -1,28 +1,20 @@
 const mongoose = require("mongoose");
 const {
   DBURL
-} = require("../../../config/config");
-const Product = require("../../../db/schemas/product");
+} = require("../../config/config");
+const User = require("../../db/schemas/user");
 
-const takeCategoryFromQuery = require("./helpers/takeCategoryFromQuery");
+const getUserWithId = (request, response) => {
+  const idForSearch = request.params.id;
 
-const searchProductsForIds = (request, response) => {
-  const category = takeCategoryFromQuery(request);
-
-  const sendResponse = products => {
-    let status = "no products";
-    if (products.length) {
-      status = "success";
-    } else {
-      status = "no products";
-    };
+  const sendResponse = user => {
     response.removeHeader("Transfer-Encoding");
     response.removeHeader("X-Powered-By");
     response
       .status(200)
       .json({
-        status: status,
-        products
+        status: "success",
+        user
       })
       .end();
   };
@@ -34,18 +26,19 @@ const searchProductsForIds = (request, response) => {
       .status(400)
       .json({
         status: 'error',
-        text: 'there is no such products',
+        text: 'there is no such user',
         error: error
       })
       .end();
   };
+
   mongoose
     .connect(DBURL, {
       useNewUrlParser: true
     })
     .then(() => {
-      Product.find({
-          categories: category
+      User.find({
+          _id: idForSearch
         })
         .then(sendResponse)
         .catch(sendError);
@@ -63,7 +56,6 @@ const searchProductsForIds = (request, response) => {
         .end();
       console.error("Database connection error", error);
     });
-
 };
 
-module.exports = searchProductsForIds;
+module.exports = getUserWithId;

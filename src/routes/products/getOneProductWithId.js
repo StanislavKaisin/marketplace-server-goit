@@ -1,28 +1,20 @@
 const mongoose = require("mongoose");
 const {
   DBURL
-} = require("../../../config/config");
-const Product = require("../../../db/schemas/product");
+} = require("../../config/config");
+const Product = require("../../db/schemas/product");
 
-const takeCategoryFromQuery = require("./helpers/takeCategoryFromQuery");
+const getOneProductWithId = (request, response) => {
+  const idForSearch = request.params.id;
 
-const searchProductsForIds = (request, response) => {
-  const category = takeCategoryFromQuery(request);
-
-  const sendResponse = products => {
-    let status = "no products";
-    if (products.length) {
-      status = "success";
-    } else {
-      status = "no products";
-    };
+  const sendResponse = product => {
     response.removeHeader("Transfer-Encoding");
     response.removeHeader("X-Powered-By");
     response
       .status(200)
       .json({
-        status: status,
-        products
+        status: "success",
+        product
       })
       .end();
   };
@@ -34,18 +26,19 @@ const searchProductsForIds = (request, response) => {
       .status(400)
       .json({
         status: 'error',
-        text: 'there is no such products',
+        text: 'there is no such product',
         error: error
       })
       .end();
   };
+
   mongoose
     .connect(DBURL, {
       useNewUrlParser: true
     })
     .then(() => {
       Product.find({
-          categories: category
+          id: idForSearch
         })
         .then(sendResponse)
         .catch(sendError);
@@ -66,4 +59,4 @@ const searchProductsForIds = (request, response) => {
 
 };
 
-module.exports = searchProductsForIds;
+module.exports = getOneProductWithId;

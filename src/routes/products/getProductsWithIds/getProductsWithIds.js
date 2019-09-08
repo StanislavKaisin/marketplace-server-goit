@@ -1,72 +1,63 @@
-const fs = require("fs");
-const path = require("path");
+const mongoose = require("mongoose");
+const {
+  DBURL
+} = require("../../../config/config");
+const Product = require("../../../db/schemas/product");
 
-const takeIdsFromQuery = require("./takeIdsFromQuery");
-const takeProductsToResponse = require("../helpers/takeProductsToResponse");
+const takeIdsFromQuery = require("./helpers/takeIdsFromQuery");
 
 const searchProductsForIds = (request, response) => {
-  try {
-    const filePath = path.join(
-      __dirname,
-      "../../../",
-      "db",
-      "products",
-      "all-products.json"
-    );
-    debugger;
-    let products = fs.readFileSync(filePath, "utf8", (error, data) => {
-      if (error) {
-        response.removeHeader('Transfer-Encoding');
-        response.removeHeader('X-Powered-By');
-        response
-          .status(500)
-          .format({
-            'application/json': function () {
-              response.send(JSON.stringify(error))
-            },
-          })
-          .end();
-      }
-      return data;
-    });
-    products = JSON.parse(products);
+  const ids = takeIdsFromQuery(request);
 
-    const ids = takeIdsFromQuery(request);
-
-    let productsToResponse = [];
-    productsToResponse = takeProductsToResponse(ids, products);
-
-    const resultBody = {};
-    if (productsToResponse.length) {
-      status = 'success'
-    } else {
-      status = 'no products'
-    };
-    resultBody.status = status;
-    resultBody.products = productsToResponse;
-
-    response.removeHeader('Transfer-Encoding');
-    response.removeHeader('X-Powered-By');
+  const sendResponse = products => {
+    response.removeHeader("Transfer-Encoding");
+    response.removeHeader("X-Powered-By");
     response
       .status(200)
-      .format({
-        'application/json': function () {
-          response.send(resultBody)
-        },
+      .json({
+        status: "success",
+        products
       })
       .end();
-  } catch (error) {
-    response.removeHeader('Transfer-Encoding');
-    response.removeHeader('X-Powered-By');
+  };
+
+  const sendError = error => {
+    response.removeHeader("Transfer-Encoding");
+    response.removeHeader("X-Powered-By");
     response
-      .status(500)
-      .format({
-        'application/json': function () {
-          response.send(JSON.stringify(error))
-        },
+      .status(400)
+      .json({
+        status: 'error',
+        text: 'there is no such products',
+        error: error
       })
       .end();
-  }
+  };
+
+  mongoose
+    .connect(DBURL, {
+      useNewUrlParser: true
+    })
+    .then(() => {
+      Product.find({
+          id: ids
+        })
+        .then(sendResponse)
+        .catch(sendError);
+    })
+    .catch(error => {
+      response.removeHeader("Transfer-Encoding");
+      response.removeHeader("X-Powered-By");
+      response
+        .status(500)
+        .json({
+          status: 'error',
+          text: 'Database connection error',
+          error: error
+        })
+        .end();
+      console.error("Database connection error", error);
+    });
 };
 
 module.exports = searchProductsForIds;

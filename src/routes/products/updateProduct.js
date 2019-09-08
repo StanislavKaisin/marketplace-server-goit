@@ -1,29 +1,29 @@
 const mongoose = require("mongoose");
 const {
   DBURL
-} = require("../../../config/config");
-const Product = require("../../../db/schemas/product");
+} = require("../../config/config");
+const Product = require("../../db/schemas/product");
 
-const takeCategoryFromQuery = require("./helpers/takeCategoryFromQuery");
 
-const searchProductsForIds = (request, response) => {
-  const category = takeCategoryFromQuery(request);
+const updateProduct = (request, response) => {
+  const updatedProductInfo = request.body;
+  const idForSearch = request.params.id;
 
-  const sendResponse = products => {
-    let status = "no products";
-    if (products.length) {
-      status = "success";
-    } else {
-      status = "no products";
-    };
+  const sendResponse = product => {
+    let responseBody = {
+      status: "error",
+      text: 'no such product',
+      product
+    }
+    product ? responseBody = {
+      status: "success",
+      product
+    } : responseBody;
     response.removeHeader("Transfer-Encoding");
     response.removeHeader("X-Powered-By");
     response
       .status(200)
-      .json({
-        status: status,
-        products
-      })
+      .json(responseBody)
       .end();
   };
 
@@ -34,19 +34,24 @@ const searchProductsForIds = (request, response) => {
       .status(400)
       .json({
         status: 'error',
-        text: 'there is no such products',
+        text: 'there is no such product',
         error: error
       })
       .end();
   };
+
   mongoose
     .connect(DBURL, {
       useNewUrlParser: true
     })
     .then(() => {
-      Product.find({
-          categories: category
-        })
+      Product.findOneAndUpdate({
+            id: idForSearch
+          },
+          updatedProductInfo, {
+            new: true
+          }
+        )
         .then(sendResponse)
         .catch(sendError);
     })
@@ -63,7 +68,6 @@ const searchProductsForIds = (request, response) => {
         .end();
       console.error("Database connection error", error);
     });
-
 };
 
-module.exports = searchProductsForIds;
+module.exports = updateProduct;
